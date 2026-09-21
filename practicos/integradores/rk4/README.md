@@ -1,8 +1,8 @@
 # rk4lab — Integrador Runge–Kutta 4 en Python
 
-`rk4lab` es un proyecto didáctico y reutilizable para resolver **problemas de valores iniciales de ecuaciones diferenciales ordinarias (EDO)** mediante el método clásico de **Runge–Kutta de cuarto orden (RK4)**.
+`rk4lab` es un proyecto para resolver **problemas de valores iniciales de ecuaciones diferenciales ordinarias (EDO)** mediante el método clásico de **Runge–Kutta de cuarto orden (RK4)**.
 
-Está pensado como base para los trabajos prácticos de **Fundamentos de Redes Neuronales — FAMAF 2026**, pero el núcleo numérico es completamente general: no necesita saber qué representa físicamente el problema, sino solamente evaluar una función de la forma
+Está pensado como base para los trabajos prácticos de **Fundamentos de Redes Neuronales — FAMAF 2026**, pero el núcleo numérico es completamente general: no necesita representacion del problema, sino solamente evaluar una función de la forma
 
 $$\frac{d\mathbf Y}{dt}=\mathbf F(t,\mathbf Y,\mathbf p).$$
 
