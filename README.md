@@ -1,4 +1,4 @@
-# Fundamentos de Redes Neuronales — FAMAF 2026
+# Fundamentos de Redes Neuronales — FAMAF 2026 ENTREGAS 
 
 ![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)
 ![FCEyN UNLPam](https://img.shields.io/badge/FCEyN-UNLPam-red)
@@ -15,7 +15,7 @@ El curso aborda sistemas dinámicos, modelado matemático de neuronas, redes neu
 * [Programa del curso](docs/programa_curso.pdf)
 * [Pagina oficial del curso](https://www.famaf.unc.edu.ar/~ftamarit/redes2026/index.html)
 
-## Autores
+## Autores - Estudiantes
 
 * **Julián Montero**
 * **Ximena Irazábal**
