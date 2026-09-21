@@ -346,7 +346,7 @@ Para el integrador, una EDO de cuarto orden convertida en cuatro ecuaciones y cu
 
 El nombre **cuarto orden** no significa que RK4 tenga cuatro decimales correctos ni se debe simplemente a que utilice cuatro pendientes.
 
-El orden describe cómo disminuye el error cuando reducimos el paso $h$.
+El orden describe cómo disminuye el error cuando reducimos el paso de integración $h$.
 
 La solución exacta admite un desarrollo de Taylor:
 
@@ -354,17 +354,7 @@ $$y(t+h)=y(t)+hy'(t)+\frac{h^2}{2!}y''(t)+\frac{h^3}{3!}y'''(t)+\frac{h^4}{4!}y^
 
 Al desarrollar también las etapas de RK4 y sustituirlas en la combinación final, el método reproduce los términos de Taylor hasta orden $h^4$. La primera discrepancia aparece en orden $h^5$.
 
-### 7.1 Error local: orden 5
-
-El **error local** responde a la pregunta:
-
-> Si comienzo un único paso exactamente sobre la solución verdadera, ¿qué error introduce ese paso de RK4?
-
-Para RK4,
-
-$$\boxed{E_{\mathrm{local}}=O(h^5)}.$$
-
-Para verificarlo numéricamente utilizamos
+Para verificar este comportamiento utilizamos el problema
 
 $$\dot y=y,\qquad y(0)=1,$$
 
@@ -372,7 +362,38 @@ cuya solución exacta es
 
 $$y(t)=e^t.$$
 
-Para cada valor de $h$ se realiza **un solo paso** desde el valor inicial exacto y se calcula
+Esto permite calcular directamente el error cometido por el integrador para diferentes valores del paso $h$.
+
+### 7.1 Verificación general de convergencia
+
+El experimento se realiza reduciendo sucesivamente
+
+$$h,\qquad \frac h2,\qquad \frac h4,\qquad \frac h8,\qquad\ldots$$
+
+y midiendo dos errores diferentes:
+
+- **error local:** error producido por un único paso iniciado desde el valor exacto;
+- **error global:** error después de integrar desde $t_0$ hasta un mismo tiempo final $T$.
+
+![Convergencia general del método RK4](figuras/06_convergencia_rk4.png)
+
+*Figura 2 — Estudio general de convergencia del método RK4. En escala log-log, el error local sigue el comportamiento esperado proporcional a $h^5$, mientras que el error global sigue un comportamiento proporcional a $h^4$.*
+
+Esta figura constituye una de las principales verificaciones del proyecto: no solamente muestra que la solución numérica se aproxima a la solución exacta, sino que **el error disminuye con las potencias de $h$ características del método RK4**.
+
+---
+
+### 7.2 Error local: orden 5
+
+El **error local de truncamiento** responde a la pregunta:
+
+> Si comienzo un único paso exactamente sobre la solución verdadera, ¿qué error introduce ese paso de RK4?
+
+Para RK4,
+
+$$\boxed{E_{\mathrm{local}}=O(h^5)}.$$
+
+Para el problema $\dot y=y$, partimos siempre de $y(0)=1$ exacto, realizamos un solo paso de tamaño $h$ y calculamos
 
 $$E_{\mathrm{local}}(h)=\left|y_{\mathrm{RK4}}(h)-e^h\right|.$$
 
@@ -380,35 +401,39 @@ Si
 
 $$E_{\mathrm{local}}(h)\approx C_Lh^5,$$
 
-entonces en escala log-log
+entonces
 
-$$\log E_{\mathrm{local}}\approx\log C_L+5\log h,$$
+$$\log E_{\mathrm{local}}\approx\log C_L+5\log h.$$
 
-por lo que esperamos una recta de pendiente 5.
+Por lo tanto, en una representación log-log esperamos obtener una recta de pendiente aproximadamente igual a 5.
 
 ![Error local de RK4: orden 5](figuras/06a_error_local_orden5.png)
 
-*Figura 2 — Error local de RK4 en función del paso $h$, en escala log-log. La referencia proporcional a $h^5$ muestra que el error de un único paso converge con orden 5.*
+*Figura 3 — Error local de RK4 en función del paso $h$. La referencia proporcional a $h^5$ permite verificar visualmente el orden local del método.*
 
-Además, al reemplazar $h$ por $h/2$,
+Al reducir el paso a la mitad,
 
 $$\frac{E_{\mathrm{local}}(h)}{E_{\mathrm{local}}(h/2)}\longrightarrow2^5=32.$$
 
-Es decir: en el régimen asintótico, dividir el paso por dos reduce aproximadamente **32 veces** el error de un único paso.
+Por lo tanto, dentro del régimen asintótico, dividir $h$ por dos reduce aproximadamente **32 veces** el error producido por un único paso.
 
-### 7.2 Error global: orden 4
+---
 
-El **error global** compara la solución numérica obtenida después de muchos pasos con la solución exacta en un mismo tiempo físico final $T$.
+### 7.3 Error global: orden 4
 
-Si el intervalo tiene longitud $T-t_0$, el número de pasos es aproximadamente
+El **error global** mide la diferencia entre la solución numérica y la solución exacta después de avanzar mediante muchos pasos desde el dato inicial.
 
-$$N\approx\frac{T-t_0}{h}.$$
+Para llegar desde $t_0$ hasta un tiempo final fijo $T$, se requieren aproximadamente
 
-Como intuición, si cada paso introduce un error de orden $h^5$,
+$$N=\frac{T-t_0}{h}$$
+
+pasos.
+
+Como intuición, si cada paso introduce un error local de orden $h^5$,
 
 $$E_{\mathrm{global}}\sim N\,O(h^5)\sim\frac1hO(h^5)=O(h^4).$$
 
-Por tanto,
+Por lo tanto,
 
 $$\boxed{E_{\mathrm{global}}=O(h^4)}.$$
 
@@ -424,21 +449,23 @@ entonces
 
 $$\log E_{\mathrm{global}}\approx\log C_G+4\log h,$$
 
-y esperamos una pendiente 4 en escala log-log.
+por lo que esperamos una recta de pendiente aproximadamente igual a 4.
 
 ![Error global de RK4: orden 4](figuras/06b_error_global_orden4.png)
 
-*Figura 3 — Error global de RK4 al integrar hasta un tiempo final fijo. La referencia proporcional a $h^4$ muestra el comportamiento esperado para un método de cuarto orden.*
+*Figura 4 — Error global de RK4 al integrar hasta un mismo tiempo final $T$. La referencia proporcional a $h^4$ evidencia el comportamiento esperado para un método de cuarto orden.*
 
-Al reducir $h$ a la mitad,
+Al reducir el paso a la mitad,
 
 $$\frac{E_{\mathrm{global}}(h)}{E_{\mathrm{global}}(h/2)}\longrightarrow2^4=16.$$
 
-Es decir: en el régimen asintótico, dividir el paso por dos reduce aproximadamente **16 veces** el error global.
+Por lo tanto, en el régimen asintótico, dividir $h$ por dos reduce aproximadamente **16 veces** el error global.
 
-### 7.3 Orden observado
+---
 
-Podemos calcular directamente el orden experimental entre dos pasos consecutivos mediante
+### 7.4 Orden observado
+
+El orden puede calcularse directamente a partir de dos errores consecutivos:
 
 $$\boxed{p_{\mathrm{obs}}=\log_2\left(\frac{E(h)}{E(h/2)}\right)}.$$
 
@@ -446,29 +473,13 @@ Para RK4 esperamos
 
 $$p_{\mathrm{local}}\longrightarrow5,\qquad p_{\mathrm{global}}\longrightarrow4.$$
 
-![Orden observado de RK4](figuras/06c_orden_observado.png)
+![Orden observado del método RK4](figuras/06c_orden_observado.png)
 
-*Figura 4 — Orden observado al reducir progresivamente el paso. El error local tiende a orden 5 y el error global tiende a orden 4.*
+*Figura 5 — Orden observado al reducir progresivamente el paso $h$. El orden local converge hacia 5 y el orden global hacia 4.*
 
-Con los pasos utilizados por el ejemplo se obtiene:
+Esta comprobación es más fuerte que verificar únicamente que la solución numérica “se parece” a la solución exacta: permite comprobar experimentalmente que la implementación posee el **orden de convergencia característico del RK4 clásico**.
 
-| $h$ | Error local | $p_{local}$ | Error global | $p_{global}$ |
-|---:|---:|---:|---:|---:|
-| 1 | $9.9485\times10^{-3}$ | — | $2.1972\times10^{-1}$ | — |
-| 1/2 | $2.8377\times10^{-4}$ | 5.13168 | $2.0733\times10^{-2}$ | 3.40567 |
-| 1/4 | $8.4896\times10^{-6}$ | 5.06288 | $1.5935\times10^{-3}$ | 3.70164 |
-| 1/8 | $2.5971\times10^{-7}$ | 5.03074 | $1.1048\times10^{-4}$ | 3.85035 |
-| 1/16 | $8.0308\times10^{-9}$ | 5.01520 | $7.2735\times10^{-6}$ | 3.92503 |
-| 1/32 | $2.4965\times10^{-10}$ | 5.00756 | $4.6657\times10^{-7}$ | 3.96247 |
-| 1/64 | $7.7813\times10^{-12}$ | 5.00376 | $2.9543\times10^{-8}$ | 3.98122 |
-| 1/128 | $2.4292\times10^{-13}$ | 5.00148 | $1.8585\times10^{-9}$ | 3.99060 |
-
-Esta prueba es importante porque no se limita a comprobar que una gráfica “parece correcta”: verifica una propiedad matemática característica del algoritmo implementado.
-
-El cálculo de los errores está en [`estudio_orden_rk4`](src/rk4lab/analisis.py#L19-L40), el orden experimental en [`orden_observado`](src/rk4lab/analisis.py#L43-L46) y la generación de las tres figuras en [`examples/ejecutar_ejemplos.py`](examples/ejecutar_ejemplos.py#L78-L110).
-
----
-
+El cálculo se encuentra en [`src/rk4lab/analisis.py`](src/rk4lab/analisis.py) y el experimento completo en [`examples/ejecutar_ejemplos.py`](examples/ejecutar_ejemplos.py).
 ## 8. Arquitectura del proyecto
 
 ```text
