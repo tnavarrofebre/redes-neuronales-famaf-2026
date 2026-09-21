@@ -1,6 +1,6 @@
 # rk4lab — Integrador Runge–Kutta 4 en Python
 
-`rk4lab` es un proyecto didáctico para resolver numéricamente **ecuaciones diferenciales ordinarias (EDO)** mediante el método clásico de **Runge–Kutta de cuarto orden (RK4)**.
+`rk4lab` es un proyecto para resolver numéricamente **ecuaciones diferenciales ordinarias (EDO)** mediante el método clásico de **Runge–Kutta de cuarto orden (RK4)**.
 
 La idea central del proyecto es mantener completamente separadas tres partes:
 
@@ -15,7 +15,7 @@ modelo matemático  ──────►  integrador RK4  ──────►
        └── define F(t,Y,p)
 ```
 
-El integrador **no necesita saber qué representa físicamente el problema**. Solo recibe una función que define
+El integrador **no necesita representacion explicita del problema**. Solo recibe una función que define
 
 $$\frac{d\mathbf Y}{dt}=\mathbf F(t,\mathbf Y,\mathbf p)$$
 
@@ -30,7 +30,7 @@ Por eso el mismo código puede utilizarse para integrar:
 - sistemas con una o varias entradas externas;
 - osciladores;
 - sistemas dinámicos caóticos;
-- y, posteriormente, modelos neuronales.
+- y, eventualmente, modelos neuronales.
 
 ---
 
@@ -38,37 +38,25 @@ Por eso el mismo código puede utilizarse para integrar:
 
 Consideremos un problema de valores iniciales
 
-$$
-\frac{dy}{dt}=f(t,y),
-\qquad
-y(t_0)=y_0.
-$$
+$$\frac{dy}{dt}=f(t,y),\qquady(t_0)=y_0.$$
 
 Queremos conocer aproximadamente la solución en una sucesión de tiempos
 
-$$
-t_n=t_0+nh,
-$$
+$$t_n=t_0+nh,$$
 
 donde $h$ es el **paso de integración**.
 
 Si conocemos aproximadamente
 
-$$
-y_n\simeq y(t_n),
-$$
+$$y_n\simeq y(t_n),$$
 
 queremos construir una aproximación para
 
-$$
-y_{n+1}\simeq y(t_n+h).
-$$
+$$y_{n+1}\simeq y(t_n+h).$$
 
 Los métodos de Runge–Kutta hacen esto evaluando la pendiente
 
-$$
-f(t,y)
-$$
+$$f(t,y)$$
 
 en distintos puntos dentro del intervalo de integración y combinando esas evaluaciones para estimar cuánto cambia la solución.
 
@@ -84,31 +72,21 @@ El método de Runge–Kutta de primer orden coincide con el método de Euler.
 
 Se calcula una única pendiente:
 
-$$
-k_1=f(t_n,y_n),
-$$
+$$k_1=f(t_n,y_n),$$
 
 y se avanza mediante
 
-$$
-y_{n+1}=y_n+h\,k_1.
-$$
+$$y_{n+1}=y_n+h\,k_1.$$
 
 Por lo tanto,
 
-$$
-\boxed{
-y_{n+1}=y_n+h\,f(t_n,y_n)
-}
-$$
+$$\boxed{y_{n+1}=y_n+h\,f(t_n,y_n)}$$
 
 Euler utiliza solamente la pendiente al comienzo del intervalo.
 
 Es sencillo y rápido, pero su error global es de orden
 
-$$
-O(h).
-$$
+$$O(h).$$
 
 ---
 
@@ -116,27 +94,15 @@ $$
 
 Una posibilidad de Runge–Kutta de segundo orden consiste en calcular primero
 
-$$
-k_1=f(t_n,y_n),
-$$
+$$k_1=f(t_n,y_n),$$
 
 usar esa pendiente para estimar el estado en el centro del intervalo,
 
-$$
-k_2=
-f\left(
-t_n+\frac h2,
-y_n+\frac h2k_1
-\right),
-$$
+$$k_2=f\left(t_n+\frac h2,y_n+\frac h2k_1\right),$$
 
 y finalmente avanzar utilizando esa segunda pendiente:
 
-$$
-\boxed{
-y_{n+1}=y_n+h\,k_2
-}
-$$
+$$\boxed{y_{n+1}=y_n+h\,k_2}$$
 
 La idea es que una pendiente evaluada aproximadamente en el centro del intervalo proporciona una mejor estimación que utilizar únicamente la pendiente inicial.
 
@@ -148,114 +114,49 @@ El método utilizado en este proyecto es el **Runge–Kutta clásico de cuarto o
 
 Partiendo del estado
 
-$$
-(t_n,\mathbf Y_n),
-$$
+$$(t_n,\mathbf Y_n),$$
 
 queremos avanzar hasta
 
-$$
-t_{n+1}=t_n+h.
-$$
+$$t_{n+1}=t_n+h.$$
 
 RK4 calcula cuatro pendientes.
 
 ### Primera pendiente
 
-$$
-\mathbf k_1
-=
-\mathbf F(t_n,\mathbf Y_n).
-$$
+$$\mathbf k_1=\mathbf F(t_n,\mathbf Y_n).$$
 
 Es la pendiente evaluada exactamente al comienzo del intervalo.
 
 ### Segunda pendiente
 
-$$
-\mathbf k_2
-=
-\mathbf F\left(
-t_n+\frac h2,
-\mathbf Y_n+\frac h2\mathbf k_1
-\right).
-$$
+$$\mathbf k_2=\mathbf F\left(t_n+\frac h2,\mathbf Y_n+\frac h2\mathbf k_1\right).$$
 
 Con $\mathbf k_1$ estimamos dónde estaría el sistema a mitad del intervalo y evaluamos allí una nueva pendiente.
 
 ### Tercera pendiente
 
-$$
-\mathbf k_3
-=
-\mathbf F\left(
-t_n+\frac h2,
-\mathbf Y_n+\frac h2\mathbf k_2
-\right).
-$$
+$$\mathbf k_3=\mathbf F\left(t_n+\frac h2,\mathbf Y_n+\frac h2\mathbf k_2\right).$$
 
 Se realiza una segunda estimación en el centro, ahora utilizando $\mathbf k_2$.
 
 ### Cuarta pendiente
 
-$$
-\mathbf k_4
-=
-\mathbf F\left(
-t_n+h,
-\mathbf Y_n+h\mathbf k_3
-\right).
-$$
+$$\mathbf k_4=\mathbf F\left(t_n+h,\mathbf Y_n+h\mathbf k_3\right).$$
 
 Finalmente estimamos la pendiente al final del intervalo.
 
-Las cuatro evaluaciones pueden visualizarse esquemáticamente como
-
-```text
-t_n                    t_n + h/2                    t_n + h
- │                         │                           │
- │                         │                           │
- k1                       k2                          k4
- │                         │
- │                        k3
- │
- └─────────────────────────────────────────────────────► t
-```
-
 La actualización final es
 
-$$
-\boxed{
-\mathbf Y_{n+1}
-=
-\mathbf Y_n
-+
-\frac h6
-\left(
-\mathbf k_1
-+
-2\mathbf k_2
-+
-2\mathbf k_3
-+
-\mathbf k_4
-\right)
-}
-$$
+$$\boxed{\mathbf Y_{n+1}=\mathbf Y_n+\frac h6\left(\mathbf k_1+2\mathbf k_2+2\mathbf k_3+\mathbf k_4\right)}$$
 
 La combinación
 
-$$
-\frac{
-\mathbf k_1+2\mathbf k_2+2\mathbf k_3+\mathbf k_4
-}{6}
-$$
+$$\frac{\mathbf k_1+2\mathbf k_2+2\mathbf k_3+\mathbf k_4}{6}$$
 
-puede interpretarse como un **promedio ponderado de las pendientes**.
+puede interpretarse como un **media aritmetica ponderada de las pendientes**.
 
 Las dos evaluaciones realizadas en el centro del intervalo tienen peso doble.
-
-> **Importante:** no se trata de una media geométrica. La combinación utilizada por RK4 es una combinación lineal ponderada.
 
 ---
 
@@ -265,15 +166,7 @@ Una característica fundamental del algoritmo es que no cambia cuando la incógn
 
 Si tenemos
 
-$$
-\mathbf Y=
-\begin{pmatrix}
-y_1\\
-y_2\\
-\vdots\\
-y_m
-\end{pmatrix},
-$$
+$$\mathbf Y=\begin{pmatrix}y_1\\y_2\\\vdots\\y_m\end{pmatrix},$$
 
 podemos escribir el sistema como
 
