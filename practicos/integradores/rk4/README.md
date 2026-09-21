@@ -17,11 +17,7 @@ modelo matemático  ──────►  integrador RK4  ──────►
 
 El integrador **no necesita saber qué representa físicamente el problema**. Solo recibe una función que define
 
-$$
-\frac{d\mathbf Y}{dt}
-=
-\mathbf F(t,\mathbf Y,\mathbf p),
-$$
+$$\frac{d\mathbf Y}{dt}=\mathbf F(t,\mathbf Y,\mathbf p)$$
 
 junto con una condición inicial, un intervalo temporal y los parámetros del modelo.
 
