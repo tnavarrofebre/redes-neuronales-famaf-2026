@@ -23,9 +23,13 @@ El curso aborda sistemas dinámicos, modelado matemático de neuronas, redes neu
 
 ## Contenido
 
+### Integradores
+
+* [Integrador Runge–Kutta de cuarto orden](practicos/integradores/rk4/)
+  
 ### Trabajos prácticos
 
-* [TP01 — Integrador Runge–Kutta de cuarto orden](practicos/tp01_rk4/)
+* [TP01 ](practicos/tp01/)
 
 Los nuevos trabajos se incorporarán al repositorio a medida que avance el curso.
 
