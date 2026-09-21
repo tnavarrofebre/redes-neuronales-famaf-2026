@@ -4,6 +4,7 @@ Repositorio de trabajos prácticos, implementaciones numéricas y material desar
 
 El curso aborda sistemas dinámicos, modelado matemático de neuronas, redes neuronales artificiales, aprendizaje automático y aprendizaje profundo, con énfasis en sus fundamentos matemáticos, físicos y computacionales.
 * [Programa del curso](docs/programa_curso.pdf)
+* [Pagina oficial del curso](https://www.famaf.unc.edu.ar/~ftamarit/redes2026/index.html)
 
 ## Autores
 
