@@ -1,6 +1,7 @@
 # Fundamentos de Redes Neuronales — FAMAF 2026
 
 ![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)
+![FCEyN UNLPam](https://img.shields.io/badge/FCEyN-UNLPam-red)
 ![FAMAF](https://img.shields.io/badge/FAMAF-UNC-blue)
 ![Cursada](https://img.shields.io/badge/Cursada-2026-green)
 
