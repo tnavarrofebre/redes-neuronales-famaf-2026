@@ -18,7 +18,7 @@ El curso aborda sistemas dinámicos, modelado matemático de neuronas, redes neu
 ## Autores - Estudiantes
 
 * **Julián Montero**
-* **Ximena Irazábal**
+* **Ximena Irazabal**
 * **Tomás Navarro Febre**
 
 ## Contenido
