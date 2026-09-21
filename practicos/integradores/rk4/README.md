@@ -1,46 +1,53 @@
 # rk4lab — Integrador Runge–Kutta 4 en Python
 
-`rk4lab` es un proyecto para resolver numéricamente **ecuaciones diferenciales ordinarias (EDO)** mediante el método clásico de **Runge–Kutta de cuarto orden (RK4)**.
+`rk4lab` es un proyecto didáctico y reutilizable para resolver **problemas de valores iniciales de ecuaciones diferenciales ordinarias (EDO)** mediante el método clásico de **Runge–Kutta de cuarto orden (RK4)**.
 
-La idea central del proyecto es mantener completamente separadas tres partes:
+Está pensado como base para los trabajos prácticos de **Fundamentos de Redes Neuronales — FAMAF 2026**, pero el núcleo numérico es completamente general: no necesita saber qué representa físicamente el problema, sino solamente evaluar una función de la forma
+
+$$\frac{d\mathbf Y}{dt}=\mathbf F(t,\mathbf Y,\mathbf p).$$
+
+La idea del proyecto es separar claramente el **modelo matemático**, el **integrador**, los **resultados** y las herramientas de **análisis y visualización**:
 
 ```text
-modelo matemático  ──────►  integrador RK4  ──────►  resultados
-       │                                              │
-       │                                              ├── gráficas
-       │                                              ├── espacio de fase
-       │                                              ├── sección de Poincaré
-       │                                              └── análisis de convergencia
+modelo matemático ──► integrador RK4 ──► solución Y(t)
+       │                                     │
+       │                                     ├── series temporales
+       │                                     ├── espacio de fase
+       │                                     ├── sección de Poincaré
+       │                                     └── análisis de convergencia
        │
        └── define F(t,Y,p)
 ```
 
-El integrador **no necesita representacion explicita del problema**. Solo recibe una función que define
-
-$$\frac{d\mathbf Y}{dt}=\mathbf F(t,\mathbf Y,\mathbf p)$$
-
-junto con una condición inicial, un intervalo temporal y los parámetros del modelo.
-
-Por eso el mismo código puede utilizarse para integrar:
-
-- una EDO escalar;
-- sistemas de EDO acopladas;
-- ecuaciones lineales y no lineales;
-- EDO de orden superior transformadas en sistemas de primer orden;
-- sistemas con una o varias entradas externas;
-- osciladores;
-- sistemas dinámicos caóticos;
-- y, eventualmente, modelos neuronales.
+Por eso el mismo integrador puede utilizarse para una EDO escalar, un sistema acoplado, una EDO de orden superior transformada a primer orden, ecuaciones no lineales y modelos con una o varias entradas externas.
 
 ---
 
-## 1. ¿Qué es un método de Runge–Kutta?
+## Índice
 
-Consideremos un problema de valores iniciales
+- [1. Runge–Kutta: idea general](#1-rungekutta-idea-general)
+- [2. De Euler a RK4](#2-de-euler-a-rk4)
+- [3. RK4 clásico](#3-rk4-clásico)
+- [4. RK4 vectorial](#4-rk4-vectorial)
+- [5. RK4 es explícito](#5-rk4-es-explícito)
+- [6. EDO de orden superior](#6-edo-de-orden-superior)
+- [7. Error local, error global y orden](#7-error-local-error-global-y-orden)
+- [8. Arquitectura del proyecto](#8-arquitectura-del-proyecto)
+- [9. Instalación y uso](#9-instalación-y-uso)
+- [10. Entradas externas](#10-entradas-externas)
+- [11. Problemas de prueba incluidos](#11-problemas-de-prueba-incluidos)
+- [12. Alcance y limitaciones](#12-alcance-y-limitaciones)
+- [13. Preparación para el TP neuronal](#13-preparación-para-el-tp-neuronal)
 
-$$\frac{dy}{dt}=f(t,y),\qquady(t_0)=y_0.$$
+---
 
-Queremos conocer aproximadamente la solución en una sucesión de tiempos
+## 1. Runge–Kutta: idea general
+
+Consideremos el problema de valores iniciales
+
+$$\frac{dy}{dt}=f(t,y),\qquad y(t_0)=y_0.$$
+
+Queremos aproximar la solución en una sucesión de tiempos
 
 $$t_n=t_0+nh,$$
 
@@ -54,69 +61,53 @@ queremos construir una aproximación para
 
 $$y_{n+1}\simeq y(t_n+h).$$
 
-Los métodos de Runge–Kutta hacen esto evaluando la pendiente
+Los métodos de Runge–Kutta hacen esto evaluando la pendiente $f(t,y)$ en uno o varios puntos del intervalo de integración y combinando esas evaluaciones para estimar la evolución de la solución.
 
-$$f(t,y)$$
-
-en distintos puntos dentro del intervalo de integración y combinando esas evaluaciones para estimar cuánto cambia la solución.
+> **Runge–Kutta no es un único método:** es una familia de métodos. RK1, RK2, RK3, RK4, etc. son miembros diferentes de esa familia.
 
 ---
 
 ## 2. De Euler a RK4
 
-Runge–Kutta no es un único algoritmo, sino una **familia de métodos**.
+### 2.1 RK1 — método de Euler explícito
 
-### 2.1 RK1 — método de Euler
+El método de Euler explícito puede interpretarse como un **Runge–Kutta de primer orden (RK1)**.
 
-El método de Runge–Kutta de primer orden coincide con el método de Euler.
-
-Se calcula una única pendiente:
+Se calcula una sola pendiente:
 
 $$k_1=f(t_n,y_n),$$
 
 y se avanza mediante
 
-$$y_{n+1}=y_n+h\,k_1.$$
+$$\boxed{y_{n+1}=y_n+h\,k_1}.$$
 
-Por lo tanto,
+Equivalente a
 
-$$\boxed{y_{n+1}=y_n+h\,f(t_n,y_n)}$$
+$$\boxed{y_{n+1}=y_n+h\,f(t_n,y_n)}.$$
 
-Euler utiliza solamente la pendiente al comienzo del intervalo.
-
-Es sencillo y rápido, pero su error global es de orden
-
-$$O(h).$$
-
----
+Euler utiliza solamente la pendiente al comienzo del intervalo y tiene error global de orden $O(h)$.
 
 ### 2.2 RK2 — método del punto medio
 
-Una posibilidad de Runge–Kutta de segundo orden consiste en calcular primero
+Una forma habitual de RK2 calcula
 
 $$k_1=f(t_n,y_n),$$
 
-usar esa pendiente para estimar el estado en el centro del intervalo,
-
 $$k_2=f\left(t_n+\frac h2,y_n+\frac h2k_1\right),$$
 
-y finalmente avanzar utilizando esa segunda pendiente:
+y avanza con
 
-$$\boxed{y_{n+1}=y_n+h\,k_2}$$
+$$\boxed{y_{n+1}=y_n+h\,k_2}.$$
 
-La idea es que una pendiente evaluada aproximadamente en el centro del intervalo proporciona una mejor estimación que utilizar únicamente la pendiente inicial.
+La idea es utilizar una pendiente estimada aproximadamente en el centro del intervalo en lugar de depender únicamente de la pendiente inicial.
 
 ---
 
-## 3. Runge–Kutta clásico de cuarto orden
+## 3. RK4 clásico
 
-El método utilizado en este proyecto es el **Runge–Kutta clásico de cuarto orden**, normalmente llamado simplemente **RK4**.
+El método utilizado en este proyecto es el **Runge–Kutta clásico de cuarto orden**.
 
-Partiendo del estado
-
-$$(t_n,\mathbf Y_n),$$
-
-queremos avanzar hasta
+Partimos del estado $(t_n,\mathbf Y_n)$ y queremos avanzar hasta
 
 $$t_{n+1}=t_n+h.$$
 
@@ -126,13 +117,13 @@ RK4 calcula cuatro pendientes.
 
 $$\mathbf k_1=\mathbf F(t_n,\mathbf Y_n).$$
 
-Es la pendiente evaluada exactamente al comienzo del intervalo.
+Se evalúa al comienzo del intervalo.
 
 ### Segunda pendiente
 
 $$\mathbf k_2=\mathbf F\left(t_n+\frac h2,\mathbf Y_n+\frac h2\mathbf k_1\right).$$
 
-Con $\mathbf k_1$ estimamos dónde estaría el sistema a mitad del intervalo y evaluamos allí una nueva pendiente.
+Con $\mathbf k_1$ se estima el estado a mitad del intervalo y allí se evalúa una nueva pendiente.
 
 ### Tercera pendiente
 
@@ -144,1312 +135,683 @@ Se realiza una segunda estimación en el centro, ahora utilizando $\mathbf k_2$.
 
 $$\mathbf k_4=\mathbf F\left(t_n+h,\mathbf Y_n+h\mathbf k_3\right).$$
 
-Finalmente estimamos la pendiente al final del intervalo.
+Se estima la pendiente al final del intervalo.
 
-La actualización final es
+Finalmente,
 
-$$\boxed{\mathbf Y_{n+1}=\mathbf Y_n+\frac h6\left(\mathbf k_1+2\mathbf k_2+2\mathbf k_3+\mathbf k_4\right)}$$
+$$\boxed{\mathbf Y_{n+1}=\mathbf Y_n+\frac h6\left(\mathbf k_1+2\mathbf k_2+2\mathbf k_3+\mathbf k_4\right)}.$$
 
 La combinación
 
 $$\frac{\mathbf k_1+2\mathbf k_2+2\mathbf k_3+\mathbf k_4}{6}$$
 
-puede interpretarse como un **media aritmetica ponderada de las pendientes**.
+es una **media aritmética ponderada de las pendientes**. Las dos evaluaciones realizadas aproximadamente en el centro del intervalo tienen peso doble.
 
-Las dos evaluaciones realizadas en el centro del intervalo tienen peso doble.
+La implementación está en [`src/rk4lab/integradores.py`](src/rk4lab/integradores.py):
+
+- [`paso_rk4`](src/rk4lab/integradores.py#L23-L39) realiza un único paso;
+- [`resolver_rk4`](src/rk4lab/integradores.py#L42-L71) repite esos pasos para construir toda la trayectoria.
 
 ---
 
-## 4. RK4 funciona directamente con vectores
+## 4. RK4 vectorial
 
-Una característica fundamental del algoritmo es que no cambia cuando la incógnita deja de ser un escalar y pasa a ser un vector.
+El algoritmo no cambia cuando la incógnita deja de ser un escalar y pasa a ser un vector.
 
-Si tenemos
+Si
 
 $$\mathbf Y=\begin{pmatrix}y_1\\y_2\\\vdots\\y_m\end{pmatrix},$$
 
-podemos escribir el sistema como
+podemos escribir un sistema de EDO como
 
-$$
-\boxed{
-\frac{d\mathbf Y}{dt}
-=
-\mathbf F(t,\mathbf Y)
-}
-$$
+$$\boxed{\frac{d\mathbf Y}{dt}=\mathbf F(t,\mathbf Y)}$$
 
 con
 
-$$
-\mathbf F(t,\mathbf Y)
-=
-\begin{pmatrix}
-f_1(t,\mathbf Y)\\
-f_2(t,\mathbf Y)\\
-\vdots\\
-f_m(t,\mathbf Y)
-\end{pmatrix}.
-$$
+$$\mathbf F(t,\mathbf Y)=\begin{pmatrix}f_1(t,\mathbf Y)\\f_2(t,\mathbf Y)\\\vdots\\f_m(t,\mathbf Y)\end{pmatrix}.$$
 
-Entonces
+Cada $\mathbf k_i$ es entonces un vector de la misma dimensión que $\mathbf Y$.
 
-$$
-\mathbf k_1,\quad
-\mathbf k_2,\quad
-\mathbf k_3,\quad
-\mathbf k_4
-$$
+En NumPy, el núcleo de RK4 se traduce casi literalmente:
 
-son simplemente vectores de la misma dimensión que $\mathbf Y$.
+```python
+k1 = F(t, Y)
+k2 = F(t + h/2, Y + h*k1/2)
+k3 = F(t + h/2, Y + h*k2/2)
+k4 = F(t + h,   Y + h*k3)
 
-El algoritmo RK4 **no cambia**.
+Y_nuevo = Y + h*(k1 + 2*k2 + 2*k3 + k4)/6
+```
+
+### Sistema lineal matricial
+
+Si el modelo tiene la forma
+
+$$\dot{\mathbf Y}=A\mathbf Y+B\mathbf u(t),$$
+
+la función puede implementarse como
+
+```python
+def modelo(t, Y, parametros):
+    A = parametros["A"]
+    B = parametros["B"]
+    u = parametros["entrada"](t)
+    return A @ Y + B @ u
+```
+
+La estructura matricial pertenece al **modelo**. El algoritmo RK4 no cambia.
+
+### Sistema no lineal
+
+Por ejemplo,
+
+$$\dot x=y-x^3,\qquad \dot y=\sin(x)-xy,$$
+
+puede escribirse como
+
+```python
+def modelo(t, Y, parametros):
+    x, y = Y
+    return np.array([
+        y - x**3,
+        np.sin(x) - x*y,
+    ])
+```
+
+Nuevamente, el integrador es exactamente el mismo.
 
 ---
 
-## 5. RK4 es un método explícito
+## 5. RK4 es explícito
 
 Que $\mathbf Y$ sea un vector **no significa que haya que resolver un sistema algebraico en cada paso**.
 
-En RK4 clásico las etapas se calculan secuencialmente:
+En RK4 las etapas se calculan secuencialmente:
 
 ```text
 Y_n ──► k1 ──► k2 ──► k3 ──► k4 ──► Y_(n+1)
 ```
 
-Cuando se calcula $\mathbf k_1$, todas las cantidades necesarias son conocidas.
+Cuando se calcula $\mathbf k_1$, todas las cantidades necesarias son conocidas. Con $\mathbf k_1$ se construye el estado intermedio para $\mathbf k_2$, luego se obtiene $\mathbf k_3$, después $\mathbf k_4$ y finalmente $\mathbf Y_{n+1}$.
 
-Una vez conocido $\mathbf k_1$, se puede calcular $\mathbf k_2$.
-
-Luego $\mathbf k_3$.
-
-Luego $\mathbf k_4$.
-
-Y finalmente $\mathbf Y_{n+1}$.
-
-Por eso RK4 es un **método explícito**.
-
-No hace falta utilizar Gauss–Seidel, inversión de matrices ni Newton–Raphson para ejecutar cada paso de RK4.
-
-### Comparación con un método implícito
-
-Euler implícito, por ejemplo, escribe
-
-$$
-\mathbf Y_{n+1}
-=
-\mathbf Y_n
-+
-h\,
-\mathbf F(t_{n+1},\mathbf Y_{n+1}).
-$$
-
-Ahora $\mathbf Y_{n+1}$ aparece también dentro de $\mathbf F$.
+Por eso el RK4 clásico es un **método explícito**.
 
 Por ejemplo, para
 
-$$
-\dot{\mathbf Y}=A\mathbf Y,
-$$
+$$\mathbf Y=\begin{pmatrix}x\\v\end{pmatrix},\qquad \mathbf F(t,\mathbf Y)=\begin{pmatrix}v\\-\omega^2x\end{pmatrix},$$
 
-Euler implícito produce
+la primera etapa es simplemente
 
-$$
-\mathbf Y_{n+1}
-=
-\mathbf Y_n+hA\mathbf Y_{n+1},
-$$
+$$\mathbf k_1=\begin{pmatrix}v_n\\-\omega^2x_n\end{pmatrix}.$$
 
-por lo que
+No hay incógnitas nuevas que despejar. Por eso no hace falta utilizar Gauss–Seidel, inversión de matrices ni Newton–Raphson para ejecutar cada paso de RK4.
 
-$$
-\boxed{
-(I-hA)\mathbf Y_{n+1}
-=
-\mathbf Y_n
-}
-$$
+### Contraste con un método implícito
 
-y efectivamente hay que resolver un sistema lineal.
+Euler implícito escribe
 
-Para un sistema no lineal podría aparecer una ecuación
+$$\mathbf Y_{n+1}=\mathbf Y_n+h\mathbf F(t_{n+1},\mathbf Y_{n+1}).$$
 
-$$
-\mathbf G(\mathbf Y_{n+1})=0,
-$$
-
-que podría requerir, por ejemplo, Newton–Raphson.
-
-Esto **no ocurre en RK4 clásico**.
-
----
-
-## 6. Sistemas de ecuaciones diferenciales
-
-Consideremos
-
-$$
-\begin{aligned}
-\dot x &= f_1(t,x,y,z),\\
-\dot y &= f_2(t,x,y,z),\\
-\dot z &= f_3(t,x,y,z).
-\end{aligned}
-$$
-
-Definimos
-
-$$
-\mathbf Y=
-\begin{pmatrix}
-x\\
-y\\
-z
-\end{pmatrix},
-$$
-
-y
-
-$$
-\mathbf F(t,\mathbf Y)
-=
-\begin{pmatrix}
-f_1(t,\mathbf Y)\\
-f_2(t,\mathbf Y)\\
-f_3(t,\mathbf Y)
-\end{pmatrix}.
-$$
-
-Entonces todo el sistema queda escrito como
-
-$$
-\boxed{
-\dot{\mathbf Y}
-=
-\mathbf F(t,\mathbf Y)
-}
-$$
-
-y puede integrarse directamente con el mismo RK4.
-
----
-
-## 7. EDO de orden superior
-
-RK4 está formulado para sistemas de ecuaciones de **primer orden**.
-
-Sin embargo, una EDO de orden superior puede transformarse en un sistema de EDO de primer orden.
-
-### Ejemplo: oscilador armónico
-
-Consideremos
-
-$$
-\ddot x+\omega^2x=0.
-$$
-
-Despejamos
-
-$$
-\ddot x=-\omega^2x.
-$$
-
-Definimos
-
-$$
-y_1=x,
-\qquad
-y_2=\dot x.
-$$
-
-Entonces
-
-$$
-\dot y_1=y_2,
-$$
-
-y
-
-$$
-\dot y_2=-\omega^2y_1.
-$$
-
-Por lo tanto,
-
-$$
-\boxed{
-\frac{d}{dt}
-\begin{pmatrix}
-y_1\\
-y_2
-\end{pmatrix}
-=
-\begin{pmatrix}
-y_2\\
--\omega^2y_1
-\end{pmatrix}
-}
-$$
-
-y el problema ya tiene exactamente la forma requerida por el integrador.
-
-### Espacio de fase
-
-Además de representar $x(t)$ y $v(t)$ por separado, podemos representar
-
-$$
-v(t)
-\quad\text{contra}\quad
-x(t).
-$$
-
-Esto produce una trayectoria en el **espacio de fase**.
-
-![Espacio de fase del oscilador armónico](figuras/02_oscilador_fase.png)
-
-*Figura 1 — Trayectoria del oscilador armónico en el espacio de fase $(x,v)$. Para el oscilador ideal, la trayectoria permanece cerrada.*
-
-El ejemplo completo puede consultarse en [`ejemplos/02_oscilador_armonico.py`](ejemplos/02_oscilador_armonico.py).
-
----
-
-## 8. Oscilador amortiguado y forzado
-
-Una ecuación más general es
-
-$$
-\ddot x+\beta\dot x+\omega^2x=F(t).
-$$
-
-Despejando,
-
-$$
-\ddot x
-=
-F(t)-\beta\dot x-\omega^2x.
-$$
-
-Definimos nuevamente
-
-$$
-y_1=x,
-\qquad
-y_2=\dot x.
-$$
-
-Entonces
-
-$$
-\boxed{
-\begin{aligned}
-\dot y_1 &= y_2,\\
-\dot y_2 &= F(t)-\beta y_2-\omega^2y_1.
-\end{aligned}
-}
-$$
-
-El hecho de que aparezca una función externa $F(t)$ no modifica el algoritmo RK4.
-
-La entrada simplemente forma parte de la función que define el modelo.
-
----
-
-## 9. Caso general de una EDO de orden \(m\)
-
-Consideremos
-
-$$
-y^{(m)}
-=
-f
-\left(
-t,
-y,
-y',
-y'',
-\ldots,
-y^{(m-1)}
-\right).
-$$
-
-Definimos
-
-$$
-y_1=y,
-\qquad
-y_2=y',
-\qquad
-y_3=y'',
-\qquad
-\ldots,
-\qquad
-y_m=y^{(m-1)}.
-$$
-
-Entonces
-
-$$
-\begin{aligned}
-\dot y_1 &= y_2,\\
-\dot y_2 &= y_3,\\
-&\vdots\\
-\dot y_{m-1} &= y_m,\\
-\dot y_m &= f(t,y_1,y_2,\ldots,y_m).
-\end{aligned}
-$$
-
-Definiendo
-
-$$
-\mathbf Y=
-\begin{pmatrix}
-y_1\\
-y_2\\
-\vdots\\
-y_m
-\end{pmatrix},
-$$
-
-volvemos a obtener
-
-$$
-\boxed{
-\dot{\mathbf Y}
-=
-\mathbf F(t,\mathbf Y)
-}
-$$
-
-Por lo tanto, para el integrador:
-
-> una EDO de cuarto orden convertida en cuatro EDO de primer orden y cuatro EDO originalmente acopladas son matemáticamente el mismo tipo de problema.
-
----
-
-# 10. ¿Por qué RK4 se llama de cuarto orden?
-
-El término **cuarto orden** no significa simplemente que RK4 utilice cuatro pendientes.
-
-El orden indica cómo disminuye el error cuando reducimos el paso $h$.
-
-La solución exacta puede desarrollarse alrededor de $t_n$:
-
-$$
-y(t_n+h)
-=
-y(t_n)
-+
-hy'(t_n)
-+
-\frac{h^2}{2!}y''(t_n)
-+
-\frac{h^3}{3!}y'''(t_n)
-+
-\frac{h^4}{4!}y^{(4)}(t_n)
-+
-O(h^5).
-$$
-
-Las cuatro pendientes de RK4 están elegidas de tal manera que, al desarrollar también las evaluaciones del método en serie de Taylor y combinarlas,
-
-$$
-y_{n+1}
-=
-y_n
-+
-\frac h6
-(k_1+2k_2+2k_3+k_4),
-$$
-
-se reproducen exactamente todos los términos hasta orden $h^4$.
-
-Por lo tanto,
-
-$$
-y(t_n+h)-y_{n+1}
-=
-O(h^5).
-$$
-
-Ese es el **error local de truncamiento**.
-
----
-
-## 10.1 Error local
-
-El error local responde a la pregunta:
-
-> Si comienzo un paso exactamente sobre la solución verdadera, ¿qué error introduce ese único paso de RK4?
-
-Para RK4,
-
-$$
-\boxed{
-E_{\mathrm{local}}
-=
-O(h^5)
-}
-$$
-
-Si dividimos el paso por dos,
-
-$$
-h\longrightarrow\frac h2,
-$$
-
-esperamos aproximadamente
-
-$$
-E_{\mathrm{local}}
-\longrightarrow
-\frac{E_{\mathrm{local}}}{2^5}.
-$$
-
-Es decir,
-
-$$
-\boxed{
-\frac{E(h)}{E(h/2)}
-\longrightarrow
-32
-}
-$$
-
-cuando $h$ es suficientemente pequeño y domina el error de discretización.
-
----
-
-## 10.2 Error global
-
-Para llegar desde $t_0$ hasta un tiempo final $T$ hacen falta aproximadamente
-
-$$
-N
-=
-\frac{T-t_0}{h}
-$$
-
-pasos.
-
-Cada paso introduce un error de orden $h^5$.
-
-De manera esquemática,
-
-$$
-E_{\mathrm{global}}
-\sim
-N\,O(h^5).
-$$
-
-Como
-
-$$
-N\sim\frac1h,
-$$
-
-resulta
-
-$$
-E_{\mathrm{global}}
-\sim
-\frac1h h^5
-=
-h^4.
-$$
-
-Por lo tanto,
-
-$$
-\boxed{
-E_{\mathrm{global}}
-=
-O(h^4)
-}
-$$
-
-y al dividir $h$ por dos esperamos aproximadamente
-
-$$
-\boxed{
-\frac{E(h)}{E(h/2)}
-\longrightarrow
-16
-}
-$$
-
----
-
-## 10.3 Verificación numérica del orden
-
-Para comprobar que el integrador fue programado correctamente utilizamos una ecuación cuya solución exacta conocemos:
-
-$$
-\dot y=y,
-\qquad
-y(0)=1.
-$$
-
-Su solución exacta es
-
-$$
-y(t)=e^t.
-$$
-
-Integramos hasta un tiempo fijo $T$ utilizando distintos valores de $h$ y comparamos el resultado numérico con
-
-$$
-e^T.
-$$
-
-![Convergencia del método RK4](figuras/06_convergencia.png)
-
-*Figura 2 — Estudio numérico de convergencia de RK4. Al disminuir el paso de integración, el error local tiende a comportarse como $h^5$ y el error global como $h^4$.*
-
-El código utilizado para realizar esta prueba puede consultarse en [`ejemplos/06_convergencia.py`](ejemplos/06_convergencia.py).
-
----
-
-# 11. Arquitectura del programa
-
-El proyecto está organizado de forma que el **integrador sea independiente de los modelos físicos**.
-
-La idea puede resumirse como
-
-```text
-                     ┌─────────────────────┐
-                     │   modelo matemático │
-                     │     F(t,Y,p)        │
-                     └──────────┬──────────┘
-                                │
-                                ▼
-                     ┌─────────────────────┐
-                     │    integrador RK4   │
-                     │                     │
-                     │ paso_rk4()          │
-                     │ resolver_rk4()      │
-                     └──────────┬──────────┘
-                                │
-                                ▼
-                     ┌─────────────────────┐
-                     │     trayectoria     │
-                     │      t , Y(t)       │
-                     └──────────┬──────────┘
-                                │
-             ┌──────────────────┼──────────────────┐
-             ▼                  ▼                  ▼
-        series t            fase             Poincaré
-             │                  │                  │
-             └──────────────────┼──────────────────┘
-                                ▼
-                            análisis
-```
-
-El núcleo del integrador se encuentra en [`src/rk4lab/integradores.py`](src/rk4lab/integradores.py).
-
-La función encargada de realizar **un único paso** es [`paso_rk4`](src/rk4lab/integradores.py).
-
-La función encargada de repetir esos pasos para construir toda la trayectoria es [`resolver_rk4`](src/rk4lab/integradores.py).
-
----
-
-# 12. Entradas externas
-
-Un modelo puede depender de una entrada externa $u(t)$.
-
-Por ejemplo,
-
-$$
-\dot{\mathbf Y}
-=
-\mathbf F(t,\mathbf Y,u(t)).
-$$
-
-Desde el punto de vista del integrador esto no representa ningún problema.
-
-La entrada se evalúa cuando se evalúa $\mathbf F$.
-
----
-
-## 12.1 Una entrada
-
-Podemos tener, por ejemplo,
-
-$$
-u(t)=A\sin(\omega t).
-$$
-
-Entonces el modelo puede escribirse conceptualmente como
-
-```python
-def modelo(t, Y, parametros):
-    u = entrada(t)
-    ...
-    return derivadas
-```
-
-El integrador sigue viendo únicamente una función
-
-$$
-\mathbf F(t,\mathbf Y).
-$$
-
----
-
-## 12.2 Varias entradas simultáneas
-
-También pueden existir varias entradas:
-
-$$
-u_1(t),u_2(t),\ldots,u_m(t).
-$$
-
-Por ejemplo,
-
-$$
-\mathbf u(t)
-=
-\begin{pmatrix}
-u_1(t)\\
-u_2(t)
-\end{pmatrix}.
-$$
-
-El modelo podría tener la forma
-
-$$
-\dot{\mathbf Y}
-=
-\mathbf F(t,\mathbf Y,\mathbf u(t)).
-$$
-
-Otra posibilidad es que las entradas se combinen:
-
-$$
-u_{\mathrm{total}}(t)
-=
-\sum_{j=1}^{m}u_j(t).
-$$
-
-Por eso, si posteriormente el trabajo práctico requiere **ocho potenciales o estímulos de entrada simultáneos**, no será necesario modificar el algoritmo RK4.
-
-Solo habrá que definir cómo esas ocho entradas intervienen en el modelo neuronal.
-
-![Ejemplo con dos entradas externas](figuras/04_dos_entradas.png)
-
-*Figura 3 — Ejemplo de integración de un sistema sometido a dos señales de entrada. Las señales externas pertenecen al modelo, no al algoritmo RK4.*
-
-El ejemplo correspondiente puede consultarse en [`ejemplos/04_dos_entradas.py`](ejemplos/04_dos_entradas.py).
-
----
-
-# 13. Ejemplos incluidos
-
-El proyecto incluye varios problemas diseñados para probar distintas capacidades del integrador.
-
-## 13.1 EDO escalar
-
-El caso más sencillo comprueba que RK4 funciona correctamente con una única variable.
-
-Por ejemplo,
-
-$$
-\dot y=y.
-$$
-
-Sirve además porque conocemos exactamente
-
-$$
-y(t)=e^t.
-$$
-
-De esta manera podemos comparar directamente solución numérica y solución analítica.
-
----
-
-## 13.2 Oscilador armónico
-
-El oscilador
-
-$$
-\ddot x+\omega^2x=0
-$$
-
-permite comprobar:
-
-- EDO de segundo orden;
-- transformación a sistema de primer orden;
-- estado vectorial;
-- integración de dos variables;
-- representación temporal;
-- espacio de fase.
-
-![Oscilador armónico](figuras/02_oscilador_fase.png)
-
-*Figura 4 — Espacio de fase del oscilador armónico.*
-
-Código: [`ejemplos/02_oscilador_armonico.py`](ejemplos/02_oscilador_armonico.py).
-
----
-
-## 13.3 Oscilador de Duffing
-
-El oscilador de Duffing introduce una no linealidad:
-
-$$
-\ddot x
-+
-\delta\dot x
-+
-\alpha x
-+
-\beta x^3
-=
-\gamma\cos(\omega t).
-$$
-
-Definiendo
-
-$$
-y_1=x,
-\qquad
-y_2=\dot x,
-$$
-
-obtenemos
-
-$$
-\begin{aligned}
-\dot y_1 &= y_2,\\
-\dot y_2 &=
--\delta y_2
--\alpha y_1
--\beta y_1^3
-+\gamma\cos(\omega t).
-\end{aligned}
-$$
-
-Este ejemplo es especialmente importante porque muestra que **RK4 no requiere que las ecuaciones sean lineales**.
-
-![Oscilador de Duffing](figuras/03_duffing.png)
-
-*Figura 5 — Trayectoria obtenida para el oscilador no lineal de Duffing.*
-
-Código: [`ejemplos/03_duffing.py`](ejemplos/03_duffing.py).
-
----
-
-## 13.4 Sistema con varias entradas
-
-Este ejemplo comprueba que un mismo modelo puede recibir más de una señal externa.
-
-![Sistema con dos entradas](figuras/04_dos_entradas.png)
-
-*Figura 6 — Respuesta del sistema frente a dos entradas externas.*
-
-Código: [`ejemplos/04_dos_entradas.py`](ejemplos/04_dos_entradas.py).
-
----
-
-## 13.5 Sistema de Lorenz
-
-El sistema de Lorenz está formado por tres EDO no lineales acopladas:
-
-$$
-\begin{aligned}
-\dot x &= \sigma(y-x),\\
-\dot y &= x(\rho-z)-y,\\
-\dot z &= xy-\beta z.
-\end{aligned}
-$$
-
-Este ejemplo comprueba simultáneamente que el integrador puede manejar:
-
-- tres variables de estado;
-- ecuaciones acopladas;
-- términos no lineales;
-- dinámica compleja.
-
-![Sistema de Lorenz](figuras/05_lorenz.png)
-
-*Figura 7 — Proyección de la trayectoria calculada para el sistema de Lorenz.*
-
-Código: [`ejemplos/05_lorenz.py`](ejemplos/05_lorenz.py).
-
----
-
-## 13.6 Test de convergencia
-
-Utilizamos
-
-$$
-\dot y=y,
-\qquad
-y(0)=1,
-\qquad
-y(t)=e^t
-$$
-
-para comprobar experimentalmente el orden del método.
-
-![Convergencia de RK4](figuras/06_convergencia.png)
-
-*Figura 8 — Comprobación numérica del comportamiento del error al reducir el paso de integración.*
-
-Código: [`ejemplos/06_convergencia.py`](ejemplos/06_convergencia.py).
-
----
-
-## 13.7 Un caso patológico: falta de unicidad
-
-Consideremos
-
-$$
-\dot y=2\sqrt{y},
-\qquad
-y(0)=0.
-$$
-
-Este problema es interesante porque muestra algo importante:
-
-> que un algoritmo numérico esté correctamente implementado no garantiza que el problema matemático tenga una solución única.
-
-Una solución es
-
-$$
-y(t)=0.
-$$
-
-También existen soluciones que permanecen en cero hasta cierto tiempo y luego comienzan a crecer.
-
-Este ejemplo permite separar dos cuestiones diferentes:
-
-1. si el **integrador numérico** funciona correctamente;
-2. si el **problema diferencial** está bien planteado y posee solución única.
-
-Código: [`ejemplos/07_no_unicidad.py`](ejemplos/07_no_unicidad.py).
-
----
-
-# 14. Gráficas y análisis de sistemas dinámicos
-
-Una vez obtenida la trayectoria
-
-$$
-\mathbf Y(t),
-$$
-
-podemos analizarla de distintas maneras sin modificar el integrador.
-
----
-
-## Series temporales
-
-La representación más directa consiste en graficar cada componente:
-
-$$
-y_i(t).
-$$
-
-Esto será particularmente útil en modelos neuronales para representar, por ejemplo, un potencial de membrana en función del tiempo.
-
----
-
-## Espacio de fase
-
-Para un sistema con dos variables
-
-$$
-\mathbf Y=(x,v),
-$$
-
-podemos representar
-
-$$
-v\;\text{vs.}\;x.
-$$
-
-![Espacio de fase](figuras/02_oscilador_fase.png)
-
-*Figura 9 — Ejemplo de representación en espacio de fase.*
-
----
-
-## Sección de Poincaré
-
-Para sistemas periódicamente forzados puede ser útil observar el sistema solamente cada período de excitación.
+Aquí $\mathbf Y_{n+1}$ aparece dentro de $\mathbf F$.
 
 Si
 
-$$
-T_f=\frac{2\pi}{\omega_f},
-$$
+$$\dot{\mathbf Y}=A\mathbf Y,$$
 
-se toman estados aproximadamente en
+entonces
 
-$$
-t_n=t_0+nT_f.
-$$
+$$\mathbf Y_{n+1}=\mathbf Y_n+hA\mathbf Y_{n+1},$$
 
-En lugar de observar una trayectoria continua obtenemos un conjunto discreto de puntos.
+y por tanto
 
-Esto permite estudiar con mayor claridad:
+$$\boxed{(I-hA)\mathbf Y_{n+1}=\mathbf Y_n}.$$
 
-- periodicidad;
-- órbitas de período múltiple;
-- cuasiperiodicidad;
-- dinámica caótica.
+Ahora sí aparece un sistema algebraico lineal que debe resolverse.
 
-La implementación correspondiente se encuentra en las herramientas de análisis del proyecto.
+Si el problema fuera no lineal, podría aparecer una ecuación del tipo
+
+$$\mathbf G(\mathbf Y_{n+1})=0,$$
+
+y allí podría utilizarse, por ejemplo, Newton–Raphson.
 
 ---
 
-# 15. ¿Cómo se utiliza el integrador?
+## 6. EDO de orden superior
 
-El patrón general consiste en definir primero el modelo.
+RK4 se formula para sistemas de EDO de primer orden. Una EDO de orden superior se transforma introduciendo variables auxiliares.
 
-Por ejemplo:
+### 6.1 Oscilador armónico
 
-```python
-import numpy as np
+Consideremos
 
-def modelo(t, Y, parametros):
-    x, v = Y
+$$\ddot x+\omega^2x=0.$$
 
-    omega = parametros["omega"]
+Definimos
 
-    dxdt = v
-    dvdt = -(omega**2) * x
+$$y_1=x,\qquad y_2=\dot x=v.$$
 
-    return np.array([dxdt, dvdt], dtype=float)
-```
+Entonces
 
-Luego se especifican las condiciones iniciales:
+$$\dot y_1=y_2,\qquad \dot y_2=-\omega^2y_1.$$
 
-```python
-Y0 = np.array([1.0, 0.0])
-```
+Por tanto,
 
-los parámetros:
+$$\boxed{\frac{d}{dt}\begin{pmatrix}y_1\\y_2\end{pmatrix}=\begin{pmatrix}y_2\\-\omega^2y_1\end{pmatrix}}.$$
 
-```python
-parametros = {
-    "omega": 1.0,
-}
-```
+El modelo utilizado en el proyecto se encuentra en [`oscilador_armonico`](src/rk4lab/modelos.py#L17-L22).
 
-y finalmente se llama al integrador.
+![Espacio de fase del oscilador armónico](figuras/02_oscilador_fase.png)
 
-Conceptualmente:
+*Figura 1 — Trayectoria del oscilador armónico en el espacio de fase $(x,v)$. El ejemplo comprueba que una EDO de segundo orden puede integrarse con el mismo RK4 después de transformarla en un sistema de primer orden.*
 
-```python
-t, Y = resolver_rk4(
-    modelo,
-    t0,
-    tf,
-    Y0,
-    h,
-    parametros,
-)
-```
+### 6.2 Oscilador amortiguado y forzado
 
-La salida contiene los tiempos
+Para
 
-$$
-t_0,t_1,\ldots,t_N
-$$
+$$\ddot x+\beta\dot x+\omega^2x=F(t),$$
 
-y los correspondientes estados
+se define nuevamente $y_1=x$ y $y_2=\dot x$, obteniendo
 
-$$
-\mathbf Y_0,\mathbf Y_1,\ldots,\mathbf Y_N.
-$$
+$$\dot y_1=y_2,\qquad \dot y_2=F(t)-\beta y_2-\omega^2y_1.$$
 
----
+El término externo $F(t)$ forma parte del modelo y no modifica el algoritmo RK4.
 
-# 16. Qué debe hacer el integrador y qué no
+### 6.3 Caso general de orden $m$
 
-Una decisión importante del diseño es evitar que el integrador acumule responsabilidades que corresponden al modelo o al análisis.
+Si
 
-El integrador debe encargarse de:
+$$y^{(m)}=f\left(t,y,y',y'',\ldots,y^{(m-1)}\right),$$
 
-```text
-F(t,Y,p)
-   │
-   ▼
-┌─────────────┐
-│    RK4      │
-└──────┬──────┘
-       │
-       ▼
-   t , Y(t)
-```
+se define
 
-No debería saber:
+$$y_1=y,\qquad y_2=y',\qquad y_3=y'',\qquad\ldots,\qquad y_m=y^{(m-1)}.$$
 
-- si $Y$ representa posición;
-- si representa velocidad;
-- si representa voltaje;
-- si representa variables neuronales;
-- cuántas señales externas existen;
-- qué variable queremos graficar;
-- si queremos construir una sección de Poincaré.
+Entonces
 
-Eso pertenece a otras capas del programa.
+$$\dot y_1=y_2,\qquad \dot y_2=y_3,\qquad\ldots,\qquad \dot y_{m-1}=y_m,\qquad \dot y_m=f(t,y_1,y_2,\ldots,y_m).$$
 
-Esta separación permite reutilizar exactamente el mismo RK4 en problemas completamente diferentes.
+Definiendo
+
+$$\mathbf Y=\begin{pmatrix}y_1\\y_2\\\vdots\\y_m\end{pmatrix},$$
+
+volvemos a obtener
+
+$$\boxed{\dot{\mathbf Y}=\mathbf F(t,\mathbf Y)}.$$
+
+Para el integrador, una EDO de cuarto orden convertida en cuatro ecuaciones y cuatro EDO originalmente acopladas son el mismo tipo de problema numérico.
 
 ---
 
-# 17. Relación con el futuro modelo neuronal
+## 7. Error local, error global y orden
 
-La motivación final del proyecto es utilizar el integrador con ecuaciones que modelen dinámica neuronal.
+El nombre **cuarto orden** no significa que RK4 tenga cuatro decimales correctos ni se debe simplemente a que utilice cuatro pendientes.
 
-Un modelo neuronal podría tener, esquemáticamente,
+El orden describe cómo disminuye el error cuando reducimos el paso $h$.
 
-$$
-\mathbf Y=
-\begin{pmatrix}
-V\\
-w_1\\
-w_2\\
-\vdots
-\end{pmatrix},
-$$
+La solución exacta admite un desarrollo de Taylor:
 
-donde $V$ podría representar un potencial y las demás variables otros grados de libertad internos del modelo.
+$$y(t+h)=y(t)+hy'(t)+\frac{h^2}{2!}y''(t)+\frac{h^3}{3!}y'''(t)+\frac{h^4}{4!}y^{(4)}(t)+O(h^5).$$
 
-La dinámica tendría alguna forma
+Al desarrollar también las etapas de RK4 y sustituirlas en la combinación final, el método reproduce los términos de Taylor hasta orden $h^4$. La primera discrepancia aparece en orden $h^5$.
 
-$$
-\dot{\mathbf Y}
-=
-\mathbf F
-\left(
-t,
-\mathbf Y,
-\mathbf u(t),
-\mathbf p
-\right),
-$$
+### 7.1 Error local: orden 5
 
-donde
+El **error local** responde a la pregunta:
 
-$$
-\mathbf u(t)
-=
-\begin{pmatrix}
-u_1(t)\\
-u_2(t)\\
-\vdots\\
-u_m(t)
-\end{pmatrix}
-$$
+> Si comienzo un único paso exactamente sobre la solución verdadera, ¿qué error introduce ese paso de RK4?
 
-representaría una o varias entradas.
+Para RK4,
 
-La arquitectura desarrollada permite entonces mantener separados:
+$$\boxed{E_{\mathrm{local}}=O(h^5)}.$$
 
-```text
-                   entradas
-                u1(t),...,um(t)
-                       │
-                       ▼
-                ┌─────────────┐
-                │   modelo    │
-                │  neuronal   │
-                └──────┬──────┘
-                       │
-                  F(t,Y,p)
-                       │
-                       ▼
-                ┌─────────────┐
-                │     RK4     │
-                └──────┬──────┘
-                       │
-                     Y(t)
-                       │
-          ┌────────────┼────────────┐
-          ▼            ▼            ▼
-       potencial     fase        análisis
-```
+Para verificarlo numéricamente utilizamos
 
-Por lo tanto, si el trabajo práctico finalmente solicita:
+$$\dot y=y,\qquad y(0)=1,$$
 
-- un potencial de entrada;
-- varios potenciales de entrada;
-- ocho entradas simultáneas;
-- ocho experimentos diferentes;
-- uno o varios potenciales de salida;
-- comparación entre entrada y salida;
+cuya solución exacta es
 
-el núcleo RK4 **no debería necesitar modificaciones**.
+$$y(t)=e^t.$$
 
-Lo que cambiará será el modelo y la forma de analizar o representar los resultados.
+Para cada valor de $h$ se realiza **un solo paso** desde el valor inicial exacto y se calcula
+
+$$E_{\mathrm{local}}(h)=\left|y_{\mathrm{RK4}}(h)-e^h\right|.$$
+
+Si
+
+$$E_{\mathrm{local}}(h)\approx C_Lh^5,$$
+
+entonces en escala log-log
+
+$$\log E_{\mathrm{local}}\approx\log C_L+5\log h,$$
+
+por lo que esperamos una recta de pendiente 5.
+
+![Error local de RK4: orden 5](figuras/06a_error_local_orden5.png)
+
+*Figura 2 — Error local de RK4 en función del paso $h$, en escala log-log. La referencia proporcional a $h^5$ muestra que el error de un único paso converge con orden 5.*
+
+Además, al reemplazar $h$ por $h/2$,
+
+$$\frac{E_{\mathrm{local}}(h)}{E_{\mathrm{local}}(h/2)}\longrightarrow2^5=32.$$
+
+Es decir: en el régimen asintótico, dividir el paso por dos reduce aproximadamente **32 veces** el error de un único paso.
+
+### 7.2 Error global: orden 4
+
+El **error global** compara la solución numérica obtenida después de muchos pasos con la solución exacta en un mismo tiempo físico final $T$.
+
+Si el intervalo tiene longitud $T-t_0$, el número de pasos es aproximadamente
+
+$$N\approx\frac{T-t_0}{h}.$$
+
+Como intuición, si cada paso introduce un error de orden $h^5$,
+
+$$E_{\mathrm{global}}\sim N\,O(h^5)\sim\frac1hO(h^5)=O(h^4).$$
+
+Por tanto,
+
+$$\boxed{E_{\mathrm{global}}=O(h^4)}.$$
+
+En el experimento numérico se integra siempre hasta $T=3$ y se calcula
+
+$$E_{\mathrm{global}}(h)=\left|y_{\mathrm{RK4}}(3)-e^3\right|.$$
+
+Si
+
+$$E_{\mathrm{global}}(h)\approx C_Gh^4,$$
+
+entonces
+
+$$\log E_{\mathrm{global}}\approx\log C_G+4\log h,$$
+
+y esperamos una pendiente 4 en escala log-log.
+
+![Error global de RK4: orden 4](figuras/06b_error_global_orden4.png)
+
+*Figura 3 — Error global de RK4 al integrar hasta un tiempo final fijo. La referencia proporcional a $h^4$ muestra el comportamiento esperado para un método de cuarto orden.*
+
+Al reducir $h$ a la mitad,
+
+$$\frac{E_{\mathrm{global}}(h)}{E_{\mathrm{global}}(h/2)}\longrightarrow2^4=16.$$
+
+Es decir: en el régimen asintótico, dividir el paso por dos reduce aproximadamente **16 veces** el error global.
+
+### 7.3 Orden observado
+
+Podemos calcular directamente el orden experimental entre dos pasos consecutivos mediante
+
+$$\boxed{p_{\mathrm{obs}}=\log_2\left(\frac{E(h)}{E(h/2)}\right)}.$$
+
+Para RK4 esperamos
+
+$$p_{\mathrm{local}}\longrightarrow5,\qquad p_{\mathrm{global}}\longrightarrow4.$$
+
+![Orden observado de RK4](figuras/06c_orden_observado.png)
+
+*Figura 4 — Orden observado al reducir progresivamente el paso. El error local tiende a orden 5 y el error global tiende a orden 4.*
+
+Con los pasos utilizados por el ejemplo se obtiene:
+
+| $h$ | Error local | $p_{local}$ | Error global | $p_{global}$ |
+|---:|---:|---:|---:|---:|
+| 1 | $9.9485\times10^{-3}$ | — | $2.1972\times10^{-1}$ | — |
+| 1/2 | $2.8377\times10^{-4}$ | 5.13168 | $2.0733\times10^{-2}$ | 3.40567 |
+| 1/4 | $8.4896\times10^{-6}$ | 5.06288 | $1.5935\times10^{-3}$ | 3.70164 |
+| 1/8 | $2.5971\times10^{-7}$ | 5.03074 | $1.1048\times10^{-4}$ | 3.85035 |
+| 1/16 | $8.0308\times10^{-9}$ | 5.01520 | $7.2735\times10^{-6}$ | 3.92503 |
+| 1/32 | $2.4965\times10^{-10}$ | 5.00756 | $4.6657\times10^{-7}$ | 3.96247 |
+| 1/64 | $7.7813\times10^{-12}$ | 5.00376 | $2.9543\times10^{-8}$ | 3.98122 |
+| 1/128 | $2.4292\times10^{-13}$ | 5.00148 | $1.8585\times10^{-9}$ | 3.99060 |
+
+Esta prueba es importante porque no se limita a comprobar que una gráfica “parece correcta”: verifica una propiedad matemática característica del algoritmo implementado.
+
+El cálculo de los errores está en [`estudio_orden_rk4`](src/rk4lab/analisis.py#L19-L40), el orden experimental en [`orden_observado`](src/rk4lab/analisis.py#L43-L46) y la generación de las tres figuras en [`examples/ejecutar_ejemplos.py`](examples/ejecutar_ejemplos.py#L78-L110).
 
 ---
 
-# 18. Estructura conceptual del proyecto
+## 8. Arquitectura del proyecto
 
 ```text
 rk4/
-│
+├── README.md
+├── pyproject.toml
+├── examples/
+│   └── ejecutar_ejemplos.py
+├── figuras/
+│   ├── 01_decaimiento_exponencial.png
+│   ├── 02_oscilador_fase.png
+│   ├── 03_dos_entradas.png
+│   ├── 04_duffing_poincare.png
+│   ├── 05_lorenz.png
+│   ├── 06_convergencia_rk4.png
+│   ├── 06a_error_local_orden5.png
+│   ├── 06b_error_global_orden4.png
+│   └── 06c_orden_observado.png
 ├── src/
 │   └── rk4lab/
+│       ├── __init__.py
 │       ├── integradores.py
-│       ├── modelos/
-│       ├── entradas/
-│       ├── analisis/
-│       └── graficos/
-│
-├── ejemplos/
-│   ├── 01_edo_escalar.py
-│   ├── 02_oscilador_armonico.py
-│   ├── 03_duffing.py
-│   ├── 04_dos_entradas.py
-│   ├── 05_lorenz.py
-│   ├── 06_convergencia.py
-│   └── 07_no_unicidad.py
-│
-├── figuras/
-│   ├── 02_oscilador_fase.png
-│   ├── 03_duffing.png
-│   ├── 04_dos_entradas.png
-│   ├── 05_lorenz.png
-│   └── 06_convergencia.png
-│
-├── tests/
-│
-└── README.md
+│       ├── modelos.py
+│       ├── senales.py
+│       ├── analisis.py
+│       └── graficos.py
+└── tests/
+    └── test_rk4.py
 ```
 
-La separación fundamental es
+La separación es intencional:
+
+- [`integradores.py`](src/rk4lab/integradores.py): núcleo RK4 y objeto `Solucion`;
+- [`modelos.py`](src/rk4lab/modelos.py): ecuaciones diferenciales de prueba;
+- [`senales.py`](src/rk4lab/senales.py): entradas externas reutilizables;
+- [`analisis.py`](src/rk4lab/analisis.py): Poincaré, errores y órdenes observados;
+- [`graficos.py`](src/rk4lab/graficos.py): visualización de soluciones y convergencia;
+- [`ejecutar_ejemplos.py`](examples/ejecutar_ejemplos.py): ejecuta todos los problemas y genera las figuras;
+- [`test_rk4.py`](tests/test_rk4.py): tests automáticos.
+
+La filosofía es mantener separadas las responsabilidades de **modelar**, **integrar**, **analizar** y **visualizar**.
+
+---
+
+## 9. Instalación y uso
+
+Desde `practicos/integradores/rk4/`:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e '.[dev]'
+```
+
+En Windows PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+### Ejecutar tests
+
+```bash
+pytest -q
+```
+
+### Ejecutar los ejemplos y regenerar las figuras
+
+```bash
+python examples/ejecutar_ejemplos.py
+```
+
+### Uso mínimo
+
+Todo modelo debe respetar la interfaz
+
+```python
+def modelo(t, y, parametros):
+    return derivadas
+```
+
+Por ejemplo, para
+
+$$\dot y=-2y,\qquad y(0)=1,$$
+
+puede escribirse
+
+```python
+import numpy as np
+from rk4lab.integradores import resolver_rk4
+
+
+def modelo(t, y, parametros):
+    return np.array([-2.0 * y[0]])
+
+
+solucion = resolver_rk4(
+    funcion=modelo,
+    intervalo_t=(0, 5),
+    y0=[1.0],
+    dt=0.01,
+    parametros={},
+    nombres=["y"],
+)
+
+print(solucion.t)
+print(solucion.y[:, 0])
+```
+
+`solucion.t` contiene los tiempos y `solucion.y` tiene forma
 
 ```text
-MODELO  ≠  INTEGRADOR  ≠  ANÁLISIS  ≠  GRÁFICOS
+(numero_de_tiempos, numero_de_variables)
 ```
 
-Esta estructura permite incorporar nuevos modelos sin tocar el algoritmo RK4.
+Por lo tanto, `solucion.y[:, 0]` representa la evolución temporal de la primera componente.
 
 ---
 
-# 19. Tests que debería superar el proyecto
+## 10. Entradas externas
 
-Antes de utilizar el integrador con un modelo neuronal desconocido conviene comprobarlo con problemas cuyo comportamiento ya conocemos.
+Las entradas externas se representan como funciones del tiempo y pertenecen al modelo, no al integrador.
 
-Los ejemplos anteriores permiten probar progresivamente:
+El módulo [`senales.py`](src/rk4lab/senales.py) incluye señales constantes, sinusoidales, pulsos y sumas de señales.
 
-| Problema | Escalar | Vectorial | No lineal | Entrada externa | Solución conocida |
-|---|:---:|:---:|:---:|:---:|:---:|
-| $\dot y=y$ | ✓ | | | | ✓ |
-| Oscilador armónico | | ✓ | | | ✓ |
-| Oscilador forzado | | ✓ | | ✓ | |
-| Duffing | | ✓ | ✓ | ✓ | |
-| Dos entradas | | ✓ | | ✓✓ | |
-| Lorenz | | ✓ | ✓ | | |
-| Convergencia | ✓ | | | | ✓ |
+Por ejemplo,
 
-De esta forma, cuando el integrador se utilice posteriormente para el trabajo práctico, tendremos evidencia independiente de que el núcleo numérico funciona correctamente.
+```python
+from rk4lab.senales import sinusoidal, pulso
+
+entrada_1 = sinusoidal(amplitud=1.0, frecuencia=0.5)
+entrada_2 = pulso(amplitud=2.0, t_inicio=3.0, t_fin=6.0)
+```
+
+Un modelo con dos entradas simultáneas puede escribirse como
+
+$$\dot y=-ay+b_1u_1(t)+b_2u_2(t).$$
+
+En Python:
+
+```python
+def modelo(t, y, p):
+    u1 = p["entrada1"](t)
+    u2 = p["entrada2"](t)
+
+    return np.array([
+        -p["a"]*y[0]
+        + p["b1"]*u1
+        + p["b2"]*u2
+    ])
+```
+
+La cantidad de entradas no modifica RK4. Si el futuro TP requiere 1, 2 u 8 entradas, esa información pertenece al modelo.
+
+![Dos entradas y una salida](figuras/03_dos_entradas.png)
+
+*Figura 5 — Una variable de estado sometida simultáneamente a una entrada sinusoidal y un pulso. El integrador solamente evalúa la derivada resultante.*
+
+Modelo: [`sistema_lineal_dos_entradas`](src/rk4lab/modelos.py#L25-L33). Ejecución: [`examples/ejecutar_ejemplos.py`](examples/ejecutar_ejemplos.py#L46-L59).
 
 ---
 
-# 20. Idea central
+## 11. Problemas de prueba incluidos
 
-Todo el proyecto puede resumirse en una sola ecuación:
+Los problemas incluidos no están pensados solamente como ejemplos visuales: cada uno comprueba una propiedad distinta del integrador.
 
-$$
-\boxed{
-\dot{\mathbf Y}
-=
-\mathbf F(t,\mathbf Y,\mathbf p)
-}
-$$
+### 11.1 Decaimiento exponencial
 
-RK4 no necesita saber qué significa $\mathbf Y$.
+Se resuelve
 
-Puede representar
+$$\dot y=-\lambda y,\qquad y(0)=1,$$
 
-$$
-\mathbf Y=
-\begin{pmatrix}
-x\\
-v
-\end{pmatrix},
-$$
+con solución exacta, para $\lambda=1$,
 
-o
+$$y(t)=e^{-t}.$$
 
-$$
-\mathbf Y=
-\begin{pmatrix}
-x\\
-y\\
-z
-\end{pmatrix},
-$$
+Permite comparar directamente el resultado numérico contra una solución conocida.
 
-o eventualmente
+Modelo: [`decaimiento_exponencial`](src/rk4lab/modelos.py#L11-L14). Ejecución: [`examples/ejecutar_ejemplos.py`](examples/ejecutar_ejemplos.py#L31-L37).
 
-$$
-\mathbf Y=
-\begin{pmatrix}
-V\\
-w_1\\
-w_2\\
-\vdots
-\end{pmatrix}.
-$$
+### 11.2 Oscilador armónico
 
-Mientras el modelo pueda proporcionar
+Comprueba una EDO de segundo orden transformada a sistema vectorial de primer orden.
 
-$$
-\mathbf F(t,\mathbf Y,\mathbf p),
-$$
+Modelo: [`oscilador_armonico`](src/rk4lab/modelos.py#L17-L22). Ejecución: [`examples/ejecutar_ejemplos.py`](examples/ejecutar_ejemplos.py#L39-L44).
 
-el mismo integrador puede avanzar el sistema mediante
+### 11.3 Dos entradas simultáneas
 
-$$
-\boxed{
-\mathbf Y_{n+1}
-=
-\mathbf Y_n
-+
-\frac h6
-\left(
-\mathbf k_1
-+
-2\mathbf k_2
-+
-2\mathbf k_3
-+
-\mathbf k_4
-\right)
-}
-$$
+Comprueba que las entradas externas pertenecen al modelo y que varias señales pueden actuar simultáneamente sin modificar el núcleo RK4.
+
+Modelo: [`sistema_lineal_dos_entradas`](src/rk4lab/modelos.py#L25-L33). Ejecución: [`examples/ejecutar_ejemplos.py`](examples/ejecutar_ejemplos.py#L46-L59).
+
+### 11.4 Duffing forzado y sección de Poincaré
+
+El oscilador de Duffing introduce no linealidad:
+
+$$\ddot x+\delta\dot x+\alpha x+\beta x^3=F(t).$$
+
+Transformado a primer orden:
+
+$$\dot x=v,\qquad \dot v=-\delta v-\alpha x-\beta x^3+F(t).$$
+
+Además de integrar la trayectoria, se construye una sección de Poincaré muestreando el sistema una vez por período del forzado después de descartar un transitorio.
+
+Modelo: [`duffing`](src/rk4lab/modelos.py#L36-L43). Análisis: [`seccion_poincare`](src/rk4lab/analisis.py#L6-L16). Ejecución: [`examples/ejecutar_ejemplos.py`](examples/ejecutar_ejemplos.py#L61-L70).
+
+### 11.5 Sistema de Lorenz
+
+Se integra
+
+$$\dot x=\sigma(y-x),\qquad \dot y=x(\rho-z)-y,\qquad \dot z=xy-\beta z.$$
+
+Comprueba que el mismo RK4 funciona con tres variables acopladas y términos no lineales.
+
+Modelo: [`lorenz`](src/rk4lab/modelos.py#L46-L56). Ejecución: [`examples/ejecutar_ejemplos.py`](examples/ejecutar_ejemplos.py#L72-L76).
+
+### 11.6 Convergencia de RK4
+
+El problema
+
+$$\dot y=y,\qquad y(0)=1,\qquad y(t)=e^t$$
+
+se utiliza para demostrar experimentalmente el orden local 5 y el orden global 4.
+
+Las tres gráficas principales de este README provienen de este ejemplo:
+
+- [`06a_error_local_orden5.png`](figuras/06a_error_local_orden5.png);
+- [`06b_error_global_orden4.png`](figuras/06b_error_global_orden4.png);
+- [`06c_orden_observado.png`](figuras/06c_orden_observado.png).
+
+Ejecución: [`examples/ejecutar_ejemplos.py`](examples/ejecutar_ejemplos.py#L78-L110).
+
+### 11.7 Problema sin unicidad
+
+Consideremos
+
+$$\dot y=2\sqrt y,\qquad y(0)=0.$$
+
+Una solución es
+
+$$y(t)=0,$$
+
+y para $t\ge0$ también
+
+$$y(t)=t^2$$
+
+satisface la ecuación con la misma condición inicial. Existen además soluciones que permanecen un tiempo en cero antes de comenzar a crecer.
+
+Si RK4 comienza exactamente en $y_0=0$,
+
+$$k_1=k_2=k_3=k_4=0,$$
+
+y permanece en $y=0$ aunque se reduzca $h$.
+
+Esto no es un fallo del integrador: el problema de valores iniciales no posee unicidad.
+
+Modelo: [`raiz_no_unica`](src/rk4lab/modelos.py#L66-L68). Ejecución: [`examples/ejecutar_ejemplos.py`](examples/ejecutar_ejemplos.py#L112-L116).
+
+---
+
+## 12. Alcance y limitaciones
+
+### EDO
+
+El integrador resuelve directamente problemas de la forma
+
+$$\dot{\mathbf Y}=\mathbf F(t,\mathbf Y,\mathbf p).$$
+
+### EDP
+
+Una ecuación diferencial parcial no se integra directamente con este RK4. En ciertos problemas puede discretizarse primero el espacio para obtener un sistema de EDO:
+
+```text
+EDP ──► discretización espacial ──► sistema de EDO ──► integración temporal
+```
+
+RK4 puede entonces utilizarse para la parte temporal si el problema resultante lo permite.
+
+### Ecuaciones con retardo
+
+Una ecuación del tipo
+
+$$\dot y(t)=f(t,y(t),y(t-\tau))$$
+
+requiere almacenar e interpolar la historia de la solución. El integrador actual no incorpora esta funcionalidad.
+
+### Ecuaciones diferenciales estocásticas
+
+Problemas del tipo
+
+$$dY=f(Y,t)\,dt+\sigma\,dW_t$$
+
+requieren esquemas específicos para ecuaciones diferenciales estocásticas.
+
+### Sistemas rígidos
+
+RK4 es explícito. En problemas rígidos (*stiff*), la estabilidad puede obligar a utilizar pasos extremadamente pequeños, y pueden resultar más adecuados métodos implícitos o especializados.
+
+---
+
+## 13. Preparación para el TP neuronal
+
+El núcleo está preparado para incorporar posteriormente un modelo neuronal sin modificar el algoritmo de integración.
+
+En [`modelos.py`](src/rk4lab/modelos.py#L59-L63) ya existe una dinámica subumbral LIF (*Leaky Integrate-and-Fire*):
+
+```python
+def neurona_lif_subumbral(t, y, p):
+    V = y[0]
+    corriente = p.get("entrada", lambda _t: 0.0)(t)
+
+    return np.array([
+        (-(V - p["E_L"]) + p["R_m"] * corriente)
+        / p["tau_m"]
+    ])
+```
+
+El disparo y el reset son eventos discretos y se mantienen separados del núcleo RK4 hasta conocer el modelo exacto pedido por el trabajo práctico.
+
+Una estructura neuronal general podría escribirse como
+
+$$\mathbf Y=\begin{pmatrix}V\\w_1\\w_2\\\vdots\end{pmatrix},\qquad \dot{\mathbf Y}=\mathbf F(t,\mathbf Y,\mathbf u(t),\mathbf p).$$
+
+Las entradas podrían ser
+
+$$\mathbf u(t)=\begin{pmatrix}u_1(t)\\u_2(t)\\\vdots\\u_m(t)\end{pmatrix}.$$
+
+Por lo tanto, si el TP requiere una entrada, ocho entradas simultáneas, ocho experimentos diferentes o varias variables de salida, el núcleo RK4 debería permanecer intacto. Lo que cambiará será el modelo y el análisis posterior.
+
+---
+
+## Idea central
+
+Todo el diseño puede resumirse en
+
+$$\boxed{\dot{\mathbf Y}=\mathbf F(t,\mathbf Y,\mathbf p)}.$$
+
+Mientras el modelo pueda proporcionar $\mathbf F(t,\mathbf Y,\mathbf p)$, el mismo integrador puede avanzar el estado mediante
+
+$$\boxed{\mathbf Y_{n+1}=\mathbf Y_n+\frac h6\left(\mathbf k_1+2\mathbf k_2+2\mathbf k_3+\mathbf k_4\right)}$$
 
 con
 
-$$
-\begin{aligned}
-\mathbf k_1
-&=
-\mathbf F(t_n,\mathbf Y_n),\\[4pt]
-\mathbf k_2
-&=
-\mathbf F\left(
-t_n+\frac h2,
-\mathbf Y_n+\frac h2\mathbf k_1
-\right),\\[4pt]
-\mathbf k_3
-&=
-\mathbf F\left(
-t_n+\frac h2,
-\mathbf Y_n+\frac h2\mathbf k_2
-\right),\\[4pt]
-\mathbf k_4
-&=
-\mathbf F\left(
-t_n+h,
-\mathbf Y_n+h\mathbf k_3
-\right).
-\end{aligned}
-$$
+$$\mathbf k_1=\mathbf F(t_n,\mathbf Y_n),\qquad \mathbf k_2=\mathbf F\left(t_n+\frac h2,\mathbf Y_n+\frac h2\mathbf k_1\right),\qquad \mathbf k_3=\mathbf F\left(t_n+\frac h2,\mathbf Y_n+\frac h2\mathbf k_2\right),\qquad \mathbf k_4=\mathbf F(t_n+h,\mathbf Y_n+h\mathbf k_3).$$
 
-Ese es el objetivo del diseño: que **el modelo cambie, pero el integrador no**.
+El objetivo es que **el modelo cambie, pero el integrador no**.
