@@ -2,7 +2,7 @@
 
 **Fundamentos de Redes Neuronales, FAMAF 2026.** Resolución de `tp1-2026.pdf`, basada en E. M. Izhikevich, *Simple Model of Spiking Neurons*, IEEE Trans. Neural Networks **14**(6), 1569–1572 (2003), DOI: [10.1109/TNN.2003.820440](https://doi.org/10.1109/TNN.2003.820440).
 
-Este directorio está pensado para copiarse en `practicos/tp1_izhikevich/`, **junto a** `practicos/integradores/rk4/`. La integración determinista de cada neurona emplea **`paso_rk4` del paquete `rk4lab` existente**, sin duplicar su implementación. Los reinicios se aplican tras cada paso. La red usa expresamente el algoritmo de dos medios pasos de Euler del artículo. La neurona estocástica utiliza un integrador Euler–Maruyama definido *en este mismo TP*.
+La integración determinista de cada neurona emplea **`paso_rk4` del paquete `rk4lab` existente**, sin duplicar su implementación. Los reinicios se aplican tras cada paso. La red usa expresamente el algoritmo de dos medios pasos de Euler del artículo. La neurona estocástica utiliza un integrador Euler–Maruyama definido *en este mismo TP*.
 
 ## Ejecutar
 
