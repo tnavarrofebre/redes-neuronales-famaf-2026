@@ -29,7 +29,7 @@ El curso aborda sistemas dinámicos, modelado matemático de neuronas, redes neu
   
 ### Trabajos prácticos
 
-* [TP01 ](practicos/tp01/)
+* [TP01 ](practicos/tp1_izhikevich)
 
 Los nuevos trabajos se incorporarán al repositorio a medida que avance el curso.
 
