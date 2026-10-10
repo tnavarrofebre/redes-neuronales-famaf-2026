@@ -1,0 +1,199 @@
+{
+  "referencia": "E. M. Izhikevich (2003), DOI:10.1109/TNN.2003.820440",
+  "paso_neurona_ms": 0.1,
+  "red_semilla": 2026,
+  "red_observacion_ms": 1000,
+  "red_actualizacion": "dos Euler de 0.5 ms para v, un paso de 1 ms para u",
+  "caso_base": {
+    "spikes": 7,
+    "tiempos_ms": [
+      13.5,
+      17.1,
+      21.9,
+      29.5,
+      44.7,
+      63.7,
+      82.6
+    ]
+  },
+  "tipos": {
+    "RS": {
+      "spikes": 5,
+      "tiempos_ms": [
+        23.8,
+        45.0,
+        90.0,
+        134.9,
+        179.8
+      ]
+    },
+    "IB": {
+      "spikes": 8,
+      "tiempos_ms": [
+        23.8,
+        26.1,
+        30.0,
+        69.2,
+        100.5,
+        131.8,
+        163.1,
+        194.4
+      ]
+    },
+    "CH": {
+      "spikes": 17,
+      "tiempos_ms": [
+        23.8,
+        25.2,
+        26.7,
+        28.4,
+        30.3,
+        32.6,
+        35.6,
+        81.8,
+        83.7,
+        85.9,
+        88.6,
+        93.8,
+        141.8,
+        143.7,
+        145.9,
+        148.6,
+        153.7
+      ]
+    },
+    "FS": {
+      "spikes": 25,
+      "tiempos_ms": [
+        23.6,
+        27.7,
+        33.4,
+        40.4,
+        47.9,
+        55.5,
+        63.0,
+        70.5,
+        77.9,
+        85.4,
+        92.9,
+        100.3,
+        107.7,
+        115.1,
+        122.6,
+        130.1,
+        137.6,
+        145.0,
+        152.4,
+        159.9,
+        167.5,
+        174.9,
+        182.3,
+        189.8,
+        197.4
+      ]
+    },
+    "TC1": {
+      "spikes": 4,
+      "tiempos_ms": [
+        33.3,
+        57.2,
+        102.6,
+        151.6
+      ]
+    },
+    "TC2": {
+      "spikes": 5,
+      "tiempos_ms": [
+        87.2,
+        92.7,
+        99.3,
+        108.0,
+        123.2
+      ]
+    },
+    "RZ": {
+      "spikes": 3,
+      "tiempos_ms": [
+        193.9,
+        236.2,
+        278.5
+      ]
+    },
+    "LTS": {
+      "spikes": 17,
+      "tiempos_ms": [
+        22.4,
+        25.3,
+        28.8,
+        33.3,
+        39.7,
+        49.8,
+        63.1,
+        76.7,
+        90.2,
+        103.7,
+        117.3,
+        130.9,
+        144.5,
+        158.0,
+        171.5,
+        185.0,
+        198.4
+      ]
+    }
+  },
+  "convergencia": [
+    {
+      "h_ms": 0.2,
+      "primer_spike_ms": 13.600000000000001,
+      "n_spikes": 7
+    },
+    {
+      "h_ms": 0.1,
+      "primer_spike_ms": 13.5,
+      "n_spikes": 7
+    },
+    {
+      "h_ms": 0.05,
+      "primer_spike_ms": 13.5,
+      "n_spikes": 7
+    },
+    {
+      "h_ms": 0.025,
+      "primer_spike_ms": 13.475000000000001,
+      "n_spikes": 7
+    }
+  ],
+  "red": {
+    "con_autoconexiones": {
+      "n": 1000,
+      "ne": 800,
+      "ni": 200,
+      "n_spikes": 7765,
+      "tasa_media_hz": 7.765
+    },
+    "sin_autoconexiones": {
+      "n": 1000,
+      "ne": 800,
+      "ni": 200,
+      "n_spikes": 7561,
+      "tasa_media_hz": 7.561
+    },
+    "variacion_spikes_porcentual": -2.6272
+  },
+  "euler_maruyama": {
+    "dt_ms": 0.01,
+    "sigma_control": 0.0,
+    "sigma_ruido": 5.0,
+    "semillas": [
+      2026,
+      2027
+    ],
+    "n_spikes": {
+      "control": 13,
+      "semilla_2026": 15,
+      "semilla_2027": 16
+    },
+    "interpretacion_sigma": "coeficiente de ruido blanco continuo: sigma*dW con DeltaW=sqrt(dt)*N(0,1)"
+  }
+}
